@@ -14,7 +14,7 @@ Penpot is configured using environment variables and flags.
 ## How the configuration works
 
 Penpot is configured using environment variables and flags. **Environment variables** start
-with <code class="language-bash">PENPOT_</code>. **Flags** use the format
+with <code class="language-bash">PENPOT\_</code>. **Flags** use the format
 <code class="language-bash"><enable|disable>-<flag-name></code>.
 
 Flags are used to enable/disable a feature or behaviour (registration, feedback),
@@ -62,6 +62,7 @@ PENPOT_FLAGS: [...] enable-telemetries
 ## Registration and authentication
 
 There are different ways of registration and authentication in Penpot:
+
 - email/password
 - Authentication providers like Google, Github or GitLab
 - LDAP
@@ -89,7 +90,7 @@ PENPOT_EMAIL_DOMAIN_WHITELIST: path/to/whitelist.txt
 PENPOT_EMAIL_DOMAIN_BLACKLIST: path/to/blacklist.txt
 ```
 
-__Since version 2.1__
+**Since version 2.1**
 
 Email whitelisting should be explicitly
 enabled with <code class="language-bash">enable-email-whitelist</code> flag. For backward compatibility, we
@@ -114,7 +115,7 @@ configuration.
 The callback has the following format:
 
 ```html
-https://<your_domain>/api/auth/oidc/callback
+https://<your_domain>/api/auth/oidc/callback</your_domain>
 ```
 
 #### Google
@@ -156,7 +157,7 @@ PENPOT_GITHUB_CLIENT_SECRET: <client-secret>
 
 #### OpenID Connect
 
-__Since version 1.5.0__
+**Since version 1.5.0**
 
 Allows integrating with a generic authentication provider that implements the OIDC
 protocol (usually used for SSO).
@@ -211,7 +212,7 @@ This is commonly required when the provider is reachable from the browser via a 
 URL but from the backend via a different internal hostname.
 <br />
 
-__Since version 1.6.0__
+**Since version 1.6.0**
 
 Added the ability to specify custom OIDC scopes.
 
@@ -221,9 +222,10 @@ Added the ability to specify custom OIDC scopes.
 # user info. Optional, defaults to `openid profile`.
 PENPOT_OIDC_SCOPES: "scope1 scope2"
 ```
+
 <br />
 
-__Since version 1.12.0__
+**Since version 1.12.0**
 
 Added the ability to specify the name and email attribute to use from
 the userinfo object for the profile creation.
@@ -237,9 +239,10 @@ PENPOT_OIDC_NAME_ATTR:
 # if not provided, the `email` prop will be used.
 PENPOT_OIDC_EMAIL_ATTR:
 ```
+
 <br />
 
-__Since version 1.19.0__
+**Since version 1.19.0**
 
 Introduced the ability to lookup the user info from the token instead
 of making a request to the userinfo endpoint. This reduces the latency
@@ -253,9 +256,10 @@ endpoint.
 
 PENPOT_OIDC_USER_INFO_SOURCE:
 ```
+
 <br />
 
-__Since version 2.1.2__
+**Since version 2.1.2**
 
 Allows users to register and login with oidc without having to previously
 register with another method.
@@ -264,7 +268,7 @@ register with another method.
 PENPOT_FLAGS: [...] enable-oidc-registration
 ```
 
-__Since version 2.16.0__
+**Since version 2.16.0**
 
 Allows customising the label shown on the OIDC login button (defaults to "OpenID").
 
@@ -272,6 +276,7 @@ Allows customising the label shown on the OIDC login button (defaults to "OpenID
 # Frontend
 PENPOT_OIDC_NAME: <provider-name>
 ```
+
 <br />
 
 #### Azure Active Directory using OpenID Connect
@@ -289,7 +294,7 @@ PENPOT_OIDC_CLIENT_SECRET: <client-secret>
 
 ### LDAP
 
-Penpot comes with support for *Lightweight Directory Access Protocol* (LDAP). This is the
+Penpot comes with support for _Lightweight Directory Access Protocol_ (LDAP). This is the
 example configuration we use internally for testing this authentication backend.
 
 ```bash
@@ -420,6 +425,7 @@ PENPOT_FLAGS: disable-email-verification enable-demo-warning
 ## Air gapped environments
 
 The current Penpot installation defaults to several external proxies:
+
 - to Github, from where the libraries and templates are downloaded
 - to Google, from where the google-fonts are downloaded.
 
@@ -467,10 +473,49 @@ python3 -c "import secrets; print(secrets.token_urlsafe(64))"
 ```
 
 And configure it:
+
 ```bash
 # Backend
 PENPOT_SECRET_KEY: my-super-secure-key
 ```
+
+### Session expiration
+
+**Since version 2.19.0**
+
+User sessions are stored server-side and expire on two independent conditions: an
+**idle timeout** and an **absolute maximum lifetime**. Both are backend only.
+
+```bash
+# Backend
+# Idle timeout: the session stops working after this much inactivity.
+# Default: 168h
+PENPOT_AUTH_TOKEN_COOKIE_MAX_AGE: 168h
+
+# Absolute maximum lifetime from the moment the session was created,
+# regardless of activity. Default: 720h
+PENPOT_AUTH_TOKEN_COOKIE_MAX_AGE_ABSOLUTE: 720h
+```
+
+Durations use the `<number><unit>` form with hour, minute or second units,
+for example `168h`, `30m` or `90s` (day units like `7d` are not accepted).
+
+While a user is active the session is automatically renewed every 6 hours (not
+configurable). Renewal extends the cookie, but never the absolute maximum. The
+backend checks the idle timeout on every request, measured from the last
+renewal: once it passes, the session stops working at once, even for a copied
+token. A daily task (`session-gc`) then deletes the sessions that have exceeded
+either window. Legacy v1 sessions and the old `http_session` table are no
+longer used.
+
+Sessions created before 2.19.0 carry no `:exp` in their token; they are still
+removed by the 30-day `created_at` cleanup and acquire `:exp` on their next
+renewal.
+
+The `secure` and `same-site` attributes of the session cookie are controlled by
+the `disable-secure-session-cookies`, `strict-session-cookies` and `enable-cors`
+flags, and by whether `PENPOT_PUBLIC_URI` is served over HTTPS. See
+[Penpot URI](#penpot-uri).
 
 ### Database
 
@@ -503,7 +548,7 @@ Storage refers to storing the user uploaded different objects in Penpot (assets,
 Objects storage is implemented using "pluggable" backends. Currently there are two
 backends available: <code class="language-bash">fs</code> and <code class="language-bash">s3</code> (for AWS S3).
 
-__Since version 2.11.0__
+**Since version 2.11.0**
 The configuration variables related to storage has been renamed, `PENPOT_STORAGE_ASSETS_*` are now `PENPOT_OBJECTS_STORAGE_*`.
 `PENPOT_ASSETS_STORAGE_BACKEND` becomes `PENPOT_OBJECTS_STORAGE_BACKEND` and its values now are `fs` and `s3` instead of `assets-fs` or `assets-s3`.
 
@@ -551,7 +596,7 @@ These settings are equally useful if you have a Minio storage system.
 
 ### File Data Storage
 
-__Since version 2.11.0__
+**Since version 2.11.0**
 
 You can change the default file data storage backend with `PENPOT_FILE_DATA_BACKEND` environment variable. Possible values are:
 
@@ -608,16 +653,16 @@ PENPOT_IMAGEMAGICK_WIDTH_LIMIT:
 PENPOT_IMAGEMAGICK_HEIGHT_LIMIT:
 ```
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PENPOT_IMAGEMAGICK_THREAD_LIMIT` | `2` | Max threads per ImageMagick process |
-| `PENPOT_IMAGEMAGICK_MEMORY_LIMIT` | `256MiB` | Max heap memory per process |
-| `PENPOT_IMAGEMAGICK_MAP_LIMIT` | `512MiB` | Max memory-mapped area (disk-backed pixel cache) |
-| `PENPOT_IMAGEMAGICK_AREA_LIMIT` | `128MP` | Max total pixels (128 megapixels ≈ 11584×11096) |
-| `PENPOT_IMAGEMAGICK_DISK_LIMIT` | `1GiB` | Max pixel cache on disk |
-| `PENPOT_IMAGEMAGICK_TIME_LIMIT` | `30` | Max seconds per ImageMagick operation |
-| `PENPOT_IMAGEMAGICK_WIDTH_LIMIT` | *(not set)* | Max width in pixels |
-| `PENPOT_IMAGEMAGICK_HEIGHT_LIMIT` | *(not set)* | Max height in pixels |
+| Variable                          | Default     | Description                                      |
+| --------------------------------- | ----------- | ------------------------------------------------ |
+| `PENPOT_IMAGEMAGICK_THREAD_LIMIT` | `2`         | Max threads per ImageMagick process              |
+| `PENPOT_IMAGEMAGICK_MEMORY_LIMIT` | `256MiB`    | Max heap memory per process                      |
+| `PENPOT_IMAGEMAGICK_MAP_LIMIT`    | `512MiB`    | Max memory-mapped area (disk-backed pixel cache) |
+| `PENPOT_IMAGEMAGICK_AREA_LIMIT`   | `128MP`     | Max total pixels (128 megapixels ≈ 11584×11096)  |
+| `PENPOT_IMAGEMAGICK_DISK_LIMIT`   | `1GiB`      | Max pixel cache on disk                          |
+| `PENPOT_IMAGEMAGICK_TIME_LIMIT`   | `30`        | Max seconds per ImageMagick operation            |
+| `PENPOT_IMAGEMAGICK_WIDTH_LIMIT`  | _(not set)_ | Max width in pixels                              |
+| `PENPOT_IMAGEMAGICK_HEIGHT_LIMIT` | _(not set)_ | Max height in pixels                             |
 
 The Docker image also includes a `policy.xml` that acts as a hard ceiling — these env vars
 cannot exceed the limits set in `policy.xml`. The policy also blocks dangerous coders (PS,
@@ -673,12 +718,12 @@ for the user:
 - <code class="language-bash">enable-prepl-server</code>: enables PREPL server, used by manage.py and other additional
   tools to communicate internally with Penpot backend. Check the [CLI section][5] to get more detail.
 
-__Since version 1.13.0__
+**Since version 1.13.0**
 
 - <code class="language-bash">enable-log-invitation-tokens</code>: for cases where you don't have email configured, this
   will log to console the invitation tokens.
 
-__Since version 2.0.0__
+**Since version 2.0.0**
 
 - <code class="language-bash">disable-onboarding</code>: disables the onboarding modals.
 - <code class="language-bash">disable-dashboard-templates-section</code>: hides the templates section from dashboard.
