@@ -10509,3 +10509,10 @@ msgstr "Try again"
 
 msgid "dashboard.invite-profile-disabled"
 msgstr "You don't have permission to invite people to this team"
+
+msgid "dashboard.shared-workspace-required"
+msgstr "Ask your instance administrator to add you to a shared team. Personal workspaces are disabled on this instance."
+
+
+msgid "dashboard.retry-workspace"
+msgstr "Check team access again"

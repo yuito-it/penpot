@@ -19,9 +19,11 @@
    [app.common.uuid :as uuid]
    [app.config :as cf]
    [app.db :as db]
+   [app.db.sql :as-alias sql]
    [app.email :as eml]
    [app.email.blacklist :as email.blacklist]
    [app.email.whitelist :as email.whitelist]
+   [app.features.shared-workspaces :as shared]
    [app.http :as-alias http]
    [app.http.session :as session]
    [app.loggers.audit :as audit]
@@ -32,6 +34,7 @@
    [app.rpc.commands.teams :as teams]
    [app.rpc.doc :as-alias doc]
    [app.rpc.helpers :as rph]
+   [app.rpc.quotes :as quotes]
    [app.setup :as-alias setup]
    [app.setup.welcome-file :refer [create-welcome-file]]
    [app.storage :as sto]
@@ -405,11 +408,24 @@
   (assert (db/connection-map? cfg)
           "expected cfg with valid connection")
   (let [features (cfeat/get-enabled-features cf/flags)
-        team     (teams/create-team cfg
-                                    {:profile-id id
-                                     :name "Default"
-                                     :features features
-                                     :is-default true})]
+        team     (if (shared/enabled?)
+                   (let [team-id (cf/get :default-team-id)
+                         team    (when team-id (db/get* cfg :team {:id team-id} ::sql/for-update true))
+                         project (when team (db/get* cfg :project {:team-id team-id :is-default true}))]
+                     (when (or (nil? team) (:is-default team) (nil? project))
+                       (ex/raise :type :restriction :code :default-shared-team-required
+                                 :hint "Configure an existing shared default team before enabling shared workspaces only"))
+                     (quotes/check! (assoc cfg ::quotes/profile-id id
+                                           ::quotes/team-id team-id ::quotes/incr 1)
+                                    {::quotes/id ::quotes/profiles-per-team})
+                     (teams/add-profile-to-team! cfg {:team-id team-id :profile-id id
+                                                      :can-edit true :is-admin false :is-owner false})
+                     (assoc team :default-project-id (:id project)))
+                   (teams/create-team cfg
+                                      {:profile-id id
+                                       :name "Default"
+                                       :features features
+                                       :is-default true}))]
     (-> (db/update! conn :profile
                     {:default-team-id (:id team)
                      :default-project-id  (:default-project-id team)}

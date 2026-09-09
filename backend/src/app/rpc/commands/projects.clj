@@ -15,6 +15,7 @@
    [app.db :as db]
    [app.db.sql :as-alias sql]
    [app.features.logical-deletion :as ldel]
+   [app.features.shared-workspaces :as shared]
    [app.loggers.audit :as-alias audit]
    [app.loggers.webhooks :as webhooks]
    [app.rpc :as-alias rpc]
@@ -46,6 +47,7 @@
 
 (defn- get-permissions
   [conn profile-id project-id]
+  (shared/check-resource! conn :project project-id)
   (let [rows     (db/exec! conn [sql:project-permissions
                                  project-id profile-id
                                  project-id profile-id])
@@ -153,7 +155,9 @@
 
 (defn get-all-projects
   [conn profile-id]
-  (db/exec! conn [sql:all-projects profile-id profile-id]))
+  (->> (db/exec! conn [sql:all-projects profile-id profile-id])
+       (remove #(and (shared/enabled?) (:is-default-team %)))
+       (vec)))
 
 
 ;; --- QUERY: Get project

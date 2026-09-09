@@ -25,6 +25,7 @@
    [app.db.sql :as sql]
    [app.features.fdata :as fdata]
    [app.features.file-migrations :as fmigr]
+   [app.features.shared-workspaces :as shared]
    [app.loggers.audit :as-alias audit]
    [app.loggers.webhooks :as-alias webhooks]
    [app.util.blob :as blob]
@@ -373,6 +374,7 @@
 
 (defn get-file-permissions
   ([conn profile-id file-id]
+   (shared/check-resource! conn :file file-id)
    (let [rows     (get-file-permissions* conn profile-id file-id)
          is-owner (boolean (some :is-owner rows))
          is-admin (boolean (some :is-admin rows))

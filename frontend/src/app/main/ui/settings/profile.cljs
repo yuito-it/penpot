@@ -140,12 +140,18 @@
 
 (mf/defc profile-page*
   []
-  (mf/with-effect []
-    (dom/set-html-title (tr "title.settings.profile")))
+  (let [profile (mf/deref refs/profile)]
+    (mf/with-effect []
+      (dom/set-html-title (tr "title.settings.profile")))
 
-  [:section {:class (stl/css :dashboard-settings)
-             :aria-labelledby "profile-section-title"}
-   [:div {:class (stl/css :form-container)}
-    [:h2 {:id "profile-section-title"} (tr "labels.profile")]
-    [:> profile-photo-form*]
-    [:> profile-form*]]])
+    [:section {:class (stl/css :dashboard-settings)
+               :aria-labelledby "profile-section-title"}
+     [:div {:class (stl/css :form-container)}
+      [:h2 {:id "profile-section-title"} (tr "labels.profile")]
+      (when (and (contains? cf/flags :shared-workspaces-only) (nil? (:default-team-id profile)))
+        [:div {:role "status"}
+         [:p (tr "dashboard.shared-workspace-required")]
+         [:button {:type "button" :on-click #(set! (.-href js/location) (str cf/public-uri))}
+          (tr "dashboard.retry-workspace")]])
+      [:> profile-photo-form*]
+      [:> profile-form*]]]))

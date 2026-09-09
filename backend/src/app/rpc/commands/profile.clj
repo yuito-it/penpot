@@ -18,6 +18,7 @@
    [app.db :as db]
    [app.db.sql :as-alias sql]
    [app.email :as eml]
+   [app.features.shared-workspaces :as shared]
    [app.http.session :as session]
    [app.loggers.audit :as audit]
    [app.main :as-alias main]
@@ -89,6 +90,7 @@
    [:email ::sm/email]
    [:theme {:optional true} :string]
    [:is-admin {:optional true} ::sm/boolean]
+   [:can-create-teams {:optional true} ::sm/boolean]
    [:is-active {:optional true} ::sm/boolean]
    [:is-blocked {:optional true} ::sm/boolean]
    [:is-demo {:optional true} ::sm/boolean]
@@ -145,8 +147,9 @@
 (defn get-profile
   "Get profile by id. Throws not-found exception if no profile found."
   [conn id & {:as opts}]
-  (-> (db/get-by-id conn :profile id opts)
-      (decode-row)))
+  (->> (db/get-by-id conn :profile id opts)
+       (decode-row)
+       (shared/resolve-defaults conn)))
 
 ;; --- MUTATION: Update Profile (own)
 
@@ -641,12 +644,15 @@
   [conn email]
   (->> (db/exec! conn [sql:profile-by-email (clean-email email)])
        (map decode-row)
-       (first)))
+       (first)
+       (#(when % (shared/resolve-defaults conn %)))))
 
 (defn strip-private-attrs
   "Only selects a publicly visible profile attrs."
   [row]
-  (dissoc row :password :deleted-at))
+  (-> row
+      (assoc :can-create-teams (shared/can-create-team? row))
+      (dissoc :password :deleted-at)))
 
 (defn filter-props
   "Removes all namespace qualified props from `props` attr."

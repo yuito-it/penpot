@@ -215,8 +215,9 @@
                                                             :default-team-id default-team-id})
                                 (rx/subs!
                                  (fn [team-id]
-                                   (st/emit! (rt/nav :dashboard-recent
-                                                     (assoc query-params :team-id team-id))))
+                                   (st/emit! (if team-id
+                                               (rt/nav :dashboard-recent (assoc query-params :team-id team-id))
+                                               (rt/nav :settings-profile))))
                                  (fn [cause]
                                    (errors/on-error cause)))))
 

@@ -47,7 +47,8 @@
                   (if (= redirect-href (rt/get-current-href))
                     (rx/of (rt/reload true))
                     (rx/of (rt/nav-raw :href redirect-href))))
-                (if-let [file-id (get props :welcome-file-id)]
+                (if-let [file-id (when-not (contains? cf/flags :shared-workspaces-only)
+                                  (get props :welcome-file-id))]
                   (rx/of (dcm/go-to-workspace
                           :file-id file-id
                           :team-id (:default-team-id profile))
@@ -62,7 +63,9 @@
                     (->> (dtm/resolve-login-team-id {:team-id team-id
                                                      :default-team-id default-team-id})
                          (rx/mapcat (fn [team-id]
-                                      (rx/of (dcm/go-to-dashboard-recent {:team-id team-id}))))))))))]
+                                      (rx/of (if team-id
+                                               (dcm/go-to-dashboard-recent {:team-id team-id})
+                                               (rt/nav :settings-profile)))))))))))]
 
     (ptk/reify ::logged-in
       ptk/WatchEvent

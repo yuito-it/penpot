@@ -105,6 +105,7 @@
    [:map {:title "config"}
     [:flags {:optional true} [::sm/set :string]]
     [:admins {:optional true} [::sm/set ::sm/email]]
+    [:default-team-id {:optional true} ::sm/uuid]
     [:secret-key {:optional true} :string]
 
     [:tenant {:optional false} :string]

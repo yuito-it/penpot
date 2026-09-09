@@ -310,6 +310,43 @@ PENPOT_LDAP_ATTRS_FULLNAME: cn
 PENPOT_LDAP_ATTRS_PHOTO: jpegPhoto
 ```
 
+## Shared workspaces only
+
+Self-hosted instances can disable personal workspaces with this optional flag.
+Create a shared team first, then add the flag to both frontend and backend and
+set the existing team's UUID on the backend:
+
+```bash
+PENPOT_FLAGS: [...] enable-shared-workspaces-only
+
+# Backend
+PENPOT_DEFAULT_TEAM_ID: <existing-shared-team-uuid>
+PENPOT_ADMINS: admin@example.com
+```
+
+New accounts, including OIDC accounts, join this team as editors instead of
+receiving a personal workspace. The team member limit still applies. Registration
+fails if the configured team is missing, deleted, personal, or full. This flag
+does not change which authentication or registration methods are enabled.
+
+Existing users open one of their shared teams. Users with no shared membership
+see account settings with instructions to ask an instance administrator for
+access. Reload after an administrator adds membership. Existing users are not
+automatically added to the configured team.
+
+Personal teams, their projects, and files become inaccessible through the UI
+and permission-checked APIs, including existing file share links. Their data and
+stored defaults remain intact. Removing the flag restores access to existing
+personal workspaces. Accounts created while the flag was enabled keep their
+shared default team; no personal workspace is created retroactively.
+
+Only active, unblocked accounts listed in `PENPOT_ADMINS` can create new shared
+teams in this mode. Configure administrators with a space- or comma-separated
+list of email addresses. Team ownership alone does not grant this permission.
+This setting is intended for standalone self-hosted instances; Nitrate Admin
+Console organizations, which provision personal organization teams, are not
+supported in this mode.
+
 ## Penpot URI
 
 You will need to set the <code class="language-bash">PENPOT_PUBLIC_URI</code> environment variable in case you go to serve Penpot to the users;

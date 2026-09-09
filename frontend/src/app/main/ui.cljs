@@ -166,7 +166,8 @@
              (not (contains? props :onboarding-questions)))
 
         show-team-modal?
-        (and (contains? cf/flags :onboarding)
+        (and (not (contains? cf/flags :shared-workspaces-only))
+             (contains? cf/flags :onboarding)
              (not nitrate-entry-active?)
              (not (:onboarding-viewed props))
              (not (contains? props :onboarding-team-id))

@@ -983,3 +983,11 @@ msgstr "招待を再送"
 #: src/app/main/ui/components/progress.cljs:80, src/app/main/ui/static.cljs:320, src/app/main/ui/static.cljs:329, src/app/main/ui/static.cljs:450
 msgid "labels.retry"
 msgstr "リトライ"
+
+
+msgid "dashboard.shared-workspace-required"
+msgstr "インスタンス管理者に共有チームへの追加を依頼してください。このインスタンスでは個人領域が無効です。"
+
+
+msgid "dashboard.retry-workspace"
+msgstr "チームへのアクセスを再確認"

@@ -407,14 +407,10 @@
 (mf/defc teams-selector-dropdown*
   {::mf/private true}
   [{:keys [team profile teams] :rest props}]
-  (let [default-team-id (or (->> teams
-                                 vals
-                                 (filter :is-default)
-                                 first
-                                 :id)
-                            (:default-team-id profile))
+  (let [default-team-id (->> teams vals (filter :is-default) first :id)
 
-        teams (dissoc teams default-team-id)
+        shared-only? (contains? cf/flags :shared-workspaces-only)
+        teams (if shared-only? teams (dissoc teams default-team-id))
         on-create-team-click
         (mf/use-fn
          (mf/deps team)
@@ -432,16 +428,17 @@
              (st/emit! (dcm/go-to-dashboard-recent :team-id team-id)))))]
 
     [:> dropdown-menu* props
-     [:> dropdown-menu-item* {:on-click    on-team-click
-                              :data-value  default-team-id
-                              :class       (stl/css-case :team-dropdown-item true
-                                                         :team-dropdown-item-no-logo (contains? cf/flags :admin-console))}
-      (when-not (contains? cf/flags :admin-console)
-        [:span {:class (stl/css :penpot-icon)} deprecated-icon/logo-icon])
+     (when (and default-team-id (not shared-only?))
+       [:> dropdown-menu-item* {:on-click    on-team-click
+                                :data-value  default-team-id
+                                :class       (stl/css-case :team-dropdown-item true
+                                                           :team-dropdown-item-no-logo (contains? cf/flags :admin-console))}
+        (when-not (contains? cf/flags :admin-console)
+          [:span {:class (stl/css :penpot-icon)} deprecated-icon/logo-icon])
 
-      [:span {:class (stl/css :team-text)} (tr "dashboard.personal-projects")]
-      (when (= default-team-id (:id team))
-        tick-icon)]
+        [:span {:class (stl/css :team-text)} (tr "dashboard.personal-projects")]
+        (when (= default-team-id (:id team))
+          tick-icon)])
 
      (when (and (contains? cf/flags :admin-console)
                 (seq (remove :is-default (vals teams))))
@@ -470,11 +467,13 @@
           tick-icon)])
 
 
-     [:hr {:role "separator" :class (stl/css :team-separator)}]
-     [:> dropdown-menu-item* {:on-click    on-create-team-click
-                              :class       (stl/css :team-dropdown-item :action)}
-      [:span {:class (stl/css :icon-wrapper)} add-icon]
-      [:span {:class (stl/css :team-text)} (tr "dashboard.create-new-team")]]]))
+     (when (or (not shared-only?) (:can-create-teams profile))
+       [:*
+        [:hr {:role "separator" :class (stl/css :team-separator)}]
+        [:> dropdown-menu-item* {:on-click    on-create-team-click
+                                 :class       (stl/css :team-dropdown-item :action)}
+         [:span {:class (stl/css :icon-wrapper)} add-icon]
+         [:span {:class (stl/css :team-text)} (tr "dashboard.create-new-team")]]])]))
 
 (mf/defc team-options-dropdown*
   {::mf/private true}
@@ -493,7 +492,9 @@
         (fn []
           ;; FIXME: this should be handled in the event, not here
           (let [team-id (:default-team-id profile)]
-            (rx/of (dcm/go-to-dashboard-recent :team-id team-id)
+            (rx/of (if (contains? cf/flags :shared-workspaces-only)
+                     (rt/nav-raw :href (str cf/public-uri))
+                     (dcm/go-to-dashboard-recent :team-id team-id))
                    (modal/hide))))
 
         on-error

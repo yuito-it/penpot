@@ -184,6 +184,7 @@
     ;; Exporter only: uses render-wasm for export instead of browser
     ;; renderer.
     :wasm-export
+    :shared-workspaces-only
     :custom-shortcuts
     :remote-media-processing})
 

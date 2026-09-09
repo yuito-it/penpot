@@ -458,7 +458,9 @@
                       (:current-team-id state))
             params  {:team-id team-id}]
         (rx/of (modal/hide)
-               (rt/nav :dashboard-recent params options))))))
+               (if (and (contains? cf/flags :shared-workspaces-only) (nil? team-id))
+                 (rt/nav :settings-profile)
+                 (rt/nav :dashboard-recent params options)))))))
 
 (defn go-to-dashboard-members
   [& {:as options}]

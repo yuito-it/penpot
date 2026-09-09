@@ -81,6 +81,8 @@
     [:div {:class (stl/css :sidebar-content)}
      [:div {:class (stl/css :sidebar-content-section)}
       [:button {:class (stl/css :back-to-dashboard)
+                :disabled (and (contains? cf/flags :shared-workspaces-only)
+                               (nil? (:default-team-id profile)))
                 :on-click go-dashboard}
        arrow-icon
        [:span {:class (stl/css :back-text)} (tr "labels.dashboard")]]]

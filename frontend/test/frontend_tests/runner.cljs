@@ -87,6 +87,7 @@
    [frontend-tests.ui.routes-test]
    [frontend-tests.ui.settings-password-schema-test]
    [frontend-tests.ui.settings-shortcuts-test]
+   [frontend-tests.ui.shared-workspaces-test]
    [frontend-tests.util-clipboard-test]
    [frontend-tests.util-object-test]
    [frontend-tests.util-range-tree-test]
@@ -181,6 +182,7 @@
    'frontend-tests.tokens.token-errors-test
    'frontend-tests.tokens.workspace-tokens-remap-test
    'frontend-tests.ui.check-updates-test
+   'frontend-tests.ui.shared-workspaces-test
    'frontend-tests.ui.colorpicker-token-set-order-test
    'frontend-tests.ui.comments-clustering-test
    'frontend-tests.ui.comments-position-modifier-test

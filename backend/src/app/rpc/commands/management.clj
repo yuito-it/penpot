@@ -17,6 +17,7 @@
    [app.common.uuid :as uuid]
    [app.config :as cf]
    [app.db :as db]
+   [app.features.shared-workspaces :as shared]
    [app.http.sse :as sse]
    [app.loggers.audit :as audit]
    [app.loggers.webhooks :as-alias webhooks]
@@ -171,6 +172,8 @@
 
 (defn duplicate-team
   [{:keys [::db/conn ::bfc/timestamp] :as cfg} & {:keys [profile-id team-id name] :as params}]
+
+  (when profile-id (shared/check-create-team! cfg profile-id false))
 
   ;; Check if the source team-id allowed to be read by the user if
   ;; profile-id is present; it can be ommited if this function is

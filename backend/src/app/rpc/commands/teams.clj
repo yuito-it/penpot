@@ -20,6 +20,7 @@
    [app.db.sql :as sql]
    [app.email :as eml]
    [app.features.logical-deletion :as ldel]
+   [app.features.shared-workspaces :as shared]
    [app.loggers.audit :as audit]
    [app.main :as-alias main]
    [app.media.validation :as media.v]
@@ -50,6 +51,7 @@
 
 (defn get-permissions
   [conn profile-id team-id]
+  (shared/check-resource! conn :team team-id)
   (let [rows     (db/exec! conn [sql:team-permissions profile-id team-id])
         is-owner (boolean (some :is-owner rows))
         is-admin (boolean (some :is-admin rows))
@@ -128,7 +130,7 @@
           tp.is_owner,
           tp.is_admin,
           tp.can_edit,
-          (t.id = ?) AS is_default
+          t.is_default AS is_default
      FROM team_profile_rel AS tp
      JOIN team AS t ON (t.id = tp.team_id)
     WHERE t.deleted_at IS null
@@ -140,7 +142,7 @@
           tp.is_owner,
           tp.is_admin,
           tp.can_edit,
-          (t.id = ?) AS is_default,
+          t.is_default AS is_default,
 
           jsonb_build_object(
             '~:type', COALESCE(p.props->'~:subscription'->>'~:type', 'professional'),
@@ -181,11 +183,11 @@
 
 (defn get-teams
   [conn profile-id]
-  (let [profile (profile/get-profile conn profile-id)
-        sql     (if (contains? cf/flags :subscriptions)
-                  sql:get-teams-with-permissions-and-subscription
-                  sql:get-teams-with-permissions)]
-    (->> (db/exec! conn [sql (:default-team-id profile) profile-id])
+  (let [sql (if (contains? cf/flags :subscriptions)
+              sql:get-teams-with-permissions-and-subscription
+              sql:get-teams-with-permissions)]
+    (->> (db/exec! conn [sql profile-id])
+         (remove #(and (shared/enabled?) (:is-default %)))
          (into [] xform:process-teams))))
 
 (def ^:private schema:get-teams
@@ -252,7 +254,7 @@
   "When `profile-id` is a non-member owner of the organization that owns
   the requested team, returns the team shaped with viewer permissions;
   otherwise nil. `cfg` must carry the nitrate client."
-  [cfg profile-id default-team-id params]
+  [cfg profile-id params]
   (when-let [team-id (perms/resolve-team-id cfg params)]
     (when (nitrate/organization-owner-of-team? cfg profile-id team-id)
       (when-let [team (db/get* cfg :team {:id team-id})]
@@ -260,7 +262,6 @@
           (-> team
               (decode-row)
               (merge perms/viewer-role-flags)
-              (assoc :is-default (= team-id default-team-id))
               (process-permissions)))))))
 
 (defn get-team
@@ -268,10 +269,10 @@
 
   (assert (uuid? profile-id) "profile-id is mandatory")
 
-  (let [{:keys [default-team-id] :as profile}
-        (profile/get-profile cfg profile-id)
+  (when-let [resolved-id (perms/resolve-team-id cfg params)]
+    (shared/check-resource! cfg :team resolved-id))
 
-        sql
+  (let [sql
         (if (contains? cf/flags :subscriptions)
           sql:get-teams-with-permissions-and-subscription
           sql:get-teams-with-permissions)
@@ -281,14 +282,14 @@
           (some? team-id)
           (let [sql (str "WITH teams AS (" sql ") "
                          "SELECT * FROM teams WHERE id=?")]
-            (db/exec-one! cfg [sql default-team-id profile-id team-id]))
+            (db/exec-one! cfg [sql profile-id team-id]))
 
           (some? project-id)
           (let [sql (str "WITH teams AS (" sql ") "
                          "SELECT t.* FROM teams AS t "
                          "  JOIN project AS p ON (p.team_id = t.id) "
                          " WHERE p.id=?")]
-            (db/exec-one! cfg [sql default-team-id profile-id project-id]))
+            (db/exec-one! cfg [sql profile-id project-id]))
 
           (some? file-id)
           (let [sql (str "WITH teams AS (" sql ") "
@@ -296,7 +297,7 @@
                          "  JOIN project AS p ON (p.team_id = t.id) "
                          "  JOIN file AS f ON (f.project_id = p.id) "
                          " WHERE f.id=?")]
-            (db/exec-one! cfg [sql default-team-id profile-id file-id]))
+            (db/exec-one! cfg [sql profile-id file-id]))
 
           :else
           (throw (IllegalArgumentException. "invalid arguments")))]
@@ -305,7 +306,7 @@
       (-> result
           (decode-row)
           (process-permissions))
-      (or (get-organization-owner-viewer-team cfg profile-id default-team-id params)
+      (or (get-organization-owner-viewer-team cfg profile-id params)
           (ex/raise :type :not-found
                     :code :team-does-not-exist)))))
 
@@ -639,6 +640,7 @@
   [{:keys [::db/conn] :as cfg} params]
   (assert (db/connection-map? cfg)
           "expected cfg with valid connection")
+  (shared/check-create-team! cfg (:profile-id params) (:is-default params))
   (let [team    (create-team* conn params)
         params  (assoc params
                        :team-id (:id team)
